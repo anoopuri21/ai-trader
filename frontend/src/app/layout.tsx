@@ -29,6 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <a href="/arth" className="nav-tab">ARTH</a>
                 <a href="/backtest" className="nav-tab">Backtest</a>
                 <a href="/brain" className="nav-tab">Brain</a>
+                <a href="/paper" className="nav-tab">Paper Trade</a>
               </nav>
               
               <div className="flex items-center gap-3">
@@ -46,6 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <a href="/arth" className="nav-tab text-xs whitespace-nowrap">ARTH</a>
             <a href="/backtest" className="nav-tab text-xs whitespace-nowrap">Backtest</a>
             <a href="/brain" className="nav-tab text-xs whitespace-nowrap">Brain</a>
+            <a href="/paper" className="nav-tab text-xs whitespace-nowrap">Paper Trade</a>
           </div>
         </header>
 

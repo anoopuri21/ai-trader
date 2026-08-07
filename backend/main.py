@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
-from api.routes import prices, signals, arth as arth_routes, backtest as backtest_routes, analysis as analysis_routes
+from api.routes import prices, signals, arth as arth_routes, backtest as backtest_routes, analysis as analysis_routes, paper_trading as paper_routes, websocket as ws_routes
 from ai_agent.arth import arth
 from ai_agent.scheduler import scheduler
 
@@ -74,6 +74,8 @@ app.include_router(signals.router)
 app.include_router(arth_routes.router)
 app.include_router(backtest_routes.router)
 app.include_router(analysis_routes.router)
+app.include_router(paper_routes.router)
+app.include_router(ws_routes.router)
 
 
 @app.get("/", tags=["Root"])
