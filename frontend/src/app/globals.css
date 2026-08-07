@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --dark-bg: #0F172A;
+  --dark-card: #1E293B;
+  --dark-border: #334155;
+}
+
+* { box-sizing: border-box; padding: 0; margin: 0; }
+html, body { max-width: 100vw; overflow-x: hidden; font-family: 'Inter', sans-serif; }
+body { background-color: var(--dark-bg); color: #F8FAFC; }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--dark-bg); }
+::-webkit-scrollbar-thumb { background: var(--dark-border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+@layer components {
+  .card { @apply bg-dark-card rounded-xl border border-dark-border p-4; }
+  .card-hover { @apply card hover:border-accent-blue/50 transition-colors cursor-pointer; }
+  .btn { @apply px-4 py-2 rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed; }
+  .btn-primary { @apply btn bg-accent-blue text-white hover:bg-accent-blue/80; }
+  .btn-buy { @apply btn bg-buy text-white hover:bg-buy/80; }
+  .btn-sell { @apply btn bg-sell text-white hover:bg-sell/80; }
+  .btn-hold { @apply btn bg-hold text-black hover:bg-hold/80; }
+  .input { @apply w-full px-4 py-2 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-accent-blue; }
+  .badge { @apply px-2 py-1 rounded-full text-xs font-medium; }
+}
+
+.live-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+.skeleton { @apply bg-dark-border rounded animate-pulse; }
