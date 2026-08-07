@@ -215,7 +215,7 @@ class ArthAnalyzer:
         
         # Bullish Engulfing
         if len(df) >= 2:
-            prev_o, prev_c = open_prices[-2], close_prices[-2]
+            prev_o, prev_c = open_prices[-2], close[-2]
             if prev_c < prev_o and c > o and o <= prev_c and c >= prev_o:
                 patterns.append({
                     "name": "Bullish Engulfing",
@@ -225,7 +225,7 @@ class ArthAnalyzer:
         
         # Bearish Engulfing
         if len(df) >= 2:
-            prev_o, prev_c = open_prices[-2], close_prices[-2]
+            prev_o, prev_c = open_prices[-2], close[-2]
             if prev_c > prev_o and c < o and o >= prev_c and c <= prev_o:
                 patterns.append({
                     "name": "Bearish Engulfing",
@@ -235,11 +235,11 @@ class ArthAnalyzer:
         
         # Morning Star (3-candle bullish)
         if len(df) >= 3:
-            c1_body = abs(close_prices[-3] - open_prices[-3])
-            c2_body = abs(close_prices[-2] - open_prices[-2])
+            c1_body = abs(close[-3] - open_prices[-3])
+            c2_body = abs(close[-2] - open_prices[-2])
             c3_body = abs(c - o)
             
-            if (close_prices[-3] < open_prices[-3] and  # First candle bearish
+            if (close[-3] < open_prices[-3] and  # First candle bearish
                 c2_body < c1_body * 0.3 and  # Small middle body
                 c > o and c > open_prices[-3]):  # Third candle bullish
                 patterns.append({
@@ -250,10 +250,10 @@ class ArthAnalyzer:
         
         # Evening Star (3-candle bearish)
         if len(df) >= 3:
-            c1_body = abs(close_prices[-3] - open_prices[-3])
-            c2_body = abs(close_prices[-2] - open_prices[-2])
+            c1_body = abs(close[-3] - open_prices[-3])
+            c2_body = abs(close[-2] - open_prices[-2])
             
-            if (close_prices[-3] > open_prices[-3] and
+            if (close[-3] > open_prices[-3] and
                 c2_body < c1_body * 0.3 and
                 c < o and c < open_prices[-3]):
                 patterns.append({
