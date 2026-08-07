@@ -11,8 +11,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
-from api.routes import prices, signals, arth as arth_routes, backtest as backtest_routes
+from api.routes import prices, signals, arth as arth_routes, backtest as backtest_routes, analysis as analysis_routes
 from ai_agent.arth import arth
+from ai_agent.scheduler import scheduler
 
 # Configure logging
 logging.basicConfig(
@@ -29,8 +30,10 @@ async def lifespan(app: FastAPI):
     logger.info("Initializing ARTH AI Agent...")
     await arth.initialize()
     logger.info("ARTH is ready!")
+    await scheduler.start()
     yield
     logger.info("Shutting down AI Trader...")
+    await scheduler.stop()
     await arth.shutdown()
 
 
@@ -70,6 +73,7 @@ app.include_router(prices.router)
 app.include_router(signals.router)
 app.include_router(arth_routes.router)
 app.include_router(backtest_routes.router)
+app.include_router(analysis_routes.router)
 
 
 @app.get("/", tags=["Root"])

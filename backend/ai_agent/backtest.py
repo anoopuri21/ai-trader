@@ -242,7 +242,7 @@ class BacktestEngine:
         df = df.copy()
         df['rsi'] = self._calc_rsi(df['Close'])
         df['vol_ma'] = df['Volume'].rolling(20).mean()
-        df['roc'] = df['Close'].pct_change(10) * 100  # 10-day rate of change
+        df['roc'] = df['Close'].pct_change(10, fill_method=None) * 100  # 10-day rate of change
         
         for i in range(25, len(df)):
             row = df.iloc[i]
