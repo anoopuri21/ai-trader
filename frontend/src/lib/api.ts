@@ -1,4 +1,4 @@
-// API client for AI Trader backend
+// API client for AI Trader v2.0
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -39,5 +39,29 @@ export const api = {
     overview: () => fetchApi<any>('/api/signals/summary/overview'),
     bullish: (limit?: number) => fetchApi<any>(`/api/signals/trending/bullish${limit ? `?limit=${limit}` : ''}`),
     bearish: (limit?: number) => fetchApi<any>(`/api/signals/trending/bearish${limit ? `?limit=${limit}` : ''}`),
+  },
+
+  arth: {
+    analyze: (symbol: string) => fetchApi<any>(`/api/arth/analyze/${symbol}`),
+    chat: (message: string, context?: any) => fetchApi<any>('/api/arth/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message, context }),
+    }),
+    brainStats: () => fetchApi<any>('/api/arth/brain/stats'),
+    predictions: (limit?: number) => fetchApi<any>(`/api/arth/brain/predictions${limit ? `?limit=${limit}` : ''}`),
+    patterns: () => fetchApi<any>('/api/arth/brain/patterns'),
+    rules: () => fetchApi<any>('/api/arth/brain/rules'),
+    reflect: (days?: number) => fetchApi<any>(`/api/arth/reflect?days=${days || 7}`),
+    status: () => fetchApi<any>('/api/arth/status'),
+    probability: (symbol: string) => fetchApi<any>(`/api/arth/probability/${symbol}`),
+  },
+
+  backtest: {
+    run: (symbol: string, strategy?: string) => fetchApi<any>(
+      `/api/backtest/run?symbol=${symbol}${strategy ? `&strategy=${strategy}` : ''}`
+    ),
+    compare: (symbol: string) => fetchApi<any>(`/api/backtest/compare?symbol=${symbol}`),
+    performance: () => fetchApi<any>('/api/backtest/performance'),
+    accuracy: (days?: number) => fetchApi<any>(`/api/backtest/accuracy?days=${days || 30}`),
   },
 };

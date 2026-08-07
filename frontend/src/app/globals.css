@@ -3,33 +3,228 @@
 @tailwind utilities;
 
 :root {
-  --dark-bg: #0F172A;
-  --dark-card: #1E293B;
-  --dark-border: #334155;
+  --bg-primary: #0F172A;
+  --bg-card: #1E293B;
+  --bg-input: #334155;
+  --border: #334155;
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --accent-blue: #3B82F6;
+  --accent-purple: #8B5CF6;
+  --buy: #10B981;
+  --sell: #EF4444;
+  --hold: #F59E0B;
 }
 
-* { box-sizing: border-box; padding: 0; margin: 0; }
-html, body { max-width: 100vw; overflow-x: hidden; font-family: 'Inter', sans-serif; }
-body { background-color: var(--dark-bg); color: #F8FAFC; }
-
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: var(--dark-bg); }
-::-webkit-scrollbar-thumb { background: var(--dark-border); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #475569; }
-
-@layer components {
-  .card { @apply bg-dark-card rounded-xl border border-dark-border p-4; }
-  .card-hover { @apply card hover:border-accent-blue/50 transition-colors cursor-pointer; }
-  .btn { @apply px-4 py-2 rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed; }
-  .btn-primary { @apply btn bg-accent-blue text-white hover:bg-accent-blue/80; }
-  .btn-buy { @apply btn bg-buy text-white hover:bg-buy/80; }
-  .btn-sell { @apply btn bg-sell text-white hover:bg-sell/80; }
-  .btn-hold { @apply btn bg-hold text-black hover:bg-hold/80; }
-  .input { @apply w-full px-4 py-2 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-accent-blue; }
-  .badge { @apply px-2 py-1 rounded-full text-xs font-medium; }
+* {
+  box-sizing: border-box;
 }
 
-.live-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
 
-.skeleton { @apply bg-dark-border rounded animate-pulse; }
+/* Cards */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem;
+  transition: all 0.2s;
+}
+
+.card:hover {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.1);
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+/* Buttons */
+.btn {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+  color: white;
+  border: none;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.btn-buy {
+  background: var(--buy);
+  color: white;
+}
+
+.btn-sell {
+  background: var(--sell);
+  color: white;
+}
+
+/* Badges */
+.badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Signal colors */
+.bg-buy { background-color: rgba(16, 185, 129, 0.1); }
+.bg-sell { background-color: rgba(239, 68, 68, 0.1); }
+.bg-hold { background-color: rgba(245, 158, 11, 0.1); }
+.border-buy { border-color: rgba(16, 185, 129, 0.3); }
+.border-sell { border-color: rgba(239, 68, 68, 0.3); }
+.border-hold { border-color: rgba(245, 158, 11, 0.3); }
+.text-buy { color: #10B981; }
+.text-sell { color: #EF4444; }
+.text-hold { color: #F59E0B; }
+
+/* Skeleton loading */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-input) 25%, #475569 50%, var(--bg-input) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Live pulse */
+.live-pulse {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--bg-input);
+  border-radius: 3px;
+}
+
+/* Tab navigation */
+.nav-tab {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+
+.nav-tab:hover {
+  color: var(--text-primary);
+  background: var(--bg-input);
+}
+
+.nav-tab.active {
+  color: white;
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+}
+
+/* Progress bar */
+.progress-bar {
+  height: 8px;
+  background: var(--bg-input);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+/* Chat */
+.chat-bubble {
+  max-width: 80%;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.chat-user {
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+  color: white;
+  margin-left: auto;
+  border-bottom-right-radius: 4px;
+}
+
+.chat-arth {
+  background: var(--bg-input);
+  color: var(--text-primary);
+  margin-right: auto;
+  border-bottom-left-radius: 4px;
+}
+
+/* Metric card */
+.metric-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem;
+}
+
+.metric-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.metric-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+/* Gradient borders */
+.gradient-border {
+  position: relative;
+}
+
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
