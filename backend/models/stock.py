@@ -85,8 +85,11 @@ class TechnicalIndicators(BaseModel):
     volume_ratio: Optional[float] = None
     
     # Price position
-    price_vs_sma20: Optional[float] = None  # Percentage above/below SMA
+    price_vs_sma20: Optional[float] = None
     price_vs_sma50: Optional[float] = None
+    
+    # Volatility (ATR) — TRADING FIX: Added for ATR-based stops/targets
+    atr: Optional[float] = None
 
 
 class TradingSignal(BaseModel):

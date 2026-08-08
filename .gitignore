@@ -131,6 +131,7 @@ DEBUG_*
 *.sqlite
 *.sqlite3
 *.db-journal
+backend/data/
 
 # Plan files (to be removed before commit)
 PLAN.md

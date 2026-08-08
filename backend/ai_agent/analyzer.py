@@ -9,7 +9,6 @@ import pandas as pd
 import numpy as np
 
 from models.stock import TechnicalIndicators, StockInfo, SignalType, TrendType, PatternType
-from ai_agent.brain import brain
 from ai_agent.prompts import SIGNAL_ANALYSIS_PROMPT, CHART_ANALYSIS_PROMPT, PROBABILITY_CALCULATION_PROMPT
 
 logger = logging.getLogger(__name__)
@@ -18,8 +17,12 @@ logger = logging.getLogger(__name__)
 class ArthAnalyzer:
     """Enhanced analyzer combining rule-based and AI analysis"""
     
-    def __init__(self):
-        self.brain = brain
+    def __init__(self, brain_instance=None):
+        if brain_instance:
+            self.brain = brain_instance
+        else:
+            from ai_agent.brain import ArthBrain
+            self.brain = ArthBrain()
     
     def get_learned_context(self) -> Tuple[str, str]:
         """Get ARTH's learned patterns and rules as context for AI prompts"""

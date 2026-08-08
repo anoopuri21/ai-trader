@@ -56,6 +56,9 @@ class Indicators:
         indicators.avg_volume = int(df['Volume'].tail(20).mean()) if len(df) >= 20 else int(df['Volume'].mean())
         indicators.volume_ratio = self._calculate_volume_ratio(df)
         
+        # TRADING FIX: ATR for volatility-adjusted levels
+        indicators.atr = self._calculate_atr(df)
+        
         # Price position
         if indicators.sma_20:
             indicators.price_vs_sma20 = ((df['Close'].iloc[-1] - indicators.sma_20) / indicators.sma_20) * 100
@@ -139,6 +142,23 @@ class Indicators:
             current_volume = df['Volume'].iloc[-1]
             avg_volume = df['Volume'].tail(20).mean()
             return float(current_volume / avg_volume) if avg_volume > 0 else None
+        except Exception:
+            return None
+    
+    def _calculate_atr(self, df: pd.DataFrame, period: int = 14) -> Optional[float]:
+        """
+        TRADING FIX: Calculate Average True Range.
+        ATR is essential for volatility-adjusted stop-losses and targets.
+        """
+        if len(df) < period + 1:
+            return None
+        try:
+            high_low = df['High'] - df['Low']
+            high_close = abs(df['High'] - df['Close'].shift())
+            low_close = abs(df['Low'] - df['Close'].shift())
+            true_range = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
+            atr = true_range.rolling(period).mean()
+            return float(atr.iloc[-1]) if not pd.isna(atr.iloc[-1]) else None
         except Exception:
             return None
 
