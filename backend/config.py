@@ -75,9 +75,15 @@ class Settings(BaseSettings):
     mistral_api_key: Optional[str] = None
     openai_api_key: Optional[str] = None
     anthropic_api_key: Optional[str] = None
+    # OmniRoute — unified gateway to 356 providers (OpenAI-compatible)
+    # Reference: https://github.com/diegosouzapw/OmniRoute
+    omniroute_api_key: Optional[str] = None
+    omniroute_base_url: str = "http://localhost:20128/v1"
+    omniroute_model: str = "auto"
+    omniroute_timeout: int = 90
     
     # ─── AI Settings ───
-    ai_priority: str = "groq,cohere,huggingface,ollama"
+    ai_priority: str = "omniroute,groq,cohere,huggingface,ollama"
     enable_fallback_signals: bool = True
     
     # ─── Learning & Backtesting ───

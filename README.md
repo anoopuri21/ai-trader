@@ -15,7 +15,8 @@ AI Trader is a **complete AI-powered trading signal platform** that:
 - 🧠 **Self-learns** from every prediction — gets smarter over time
 - 📉 **Backtests** strategies against historical data
 - 📝 **Paper trading** simulator with virtual ₹1,00,000 portfolio
-- 🔌 **Multi-AI** — Groq, Cohere, HuggingFace, Ollama (all FREE)
+- 🔌 **Multi-AI** — **OmniRoute (356 providers via one gateway)**, Groq, Cohere, HuggingFace, Ollama (all FREE)
+- 🌐 **OmniRoute Gateway** — single `OMNIROUTE_API_KEY` unlocks 150+ free tiers (~1.47B tokens/mo) with auto-fallback & 19 routing strategies ([reference](https://github.com/diegosouzapw/OmniRoute))
 - 💰 **Works with ZERO API keys** — rule-based signals always work
 - 📱 **Full-stack** — FastAPI backend + Next.js frontend
 
@@ -49,6 +50,8 @@ AI Trader is a **complete AI-powered trading signal platform** that:
 │                                                              │
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │              🔌 AI ROUTER (Multi-Provider)            │   │
+│  │  OmniRoute (356 providers via one gateway)            │   │
+│  │     ↓ auto → auto/fast · auto/cheap · auto/smart     │   │
 │  │  Groq (Llama 3.1) → Cohere → HuggingFace → Ollama   │   │
 │  │  (All FREE — automatic fallback chain)                │   │
 │  └──────────────────────────────────────────────────────┘   │
@@ -93,17 +96,25 @@ npm run dev
 - ✅ Paper trading simulator
 - ✅ ARTH's brain (learns from every prediction)
 
-### With Free AI (Recommended)
+### With Free AI — OmniRoute Gateway (Recommended)
 ```bash
-# Add FREE API keys to .env file
+# Option A — OmniRoute (ONE key → 356 providers, 150+ free tiers)
+./scripts/setup-omniroute.sh              # installs & starts gateway at http://localhost:20128
+# Open http://localhost:20128 → Providers → add a free provider (Kiro / OpenCode Free / Pollinations)
+# Dashboard → API Manager → create key → put it in .env:
 cp .env.example .env
+# OMNIROUTE_API_KEY=sk-...
+# OMNIROUTE_BASE_URL=http://localhost:20128/v1
+# OMNIROUTE_MODEL=auto
 
-# Get free keys:
+# Option B — Direct free keys (fallback if you prefer no gateway)
 # - Groq: https://console.groq.com/keys (fastest, recommended)
 # - Cohere: https://dashboard.cohere.com/api-keys
 # - HuggingFace: https://huggingface.co/settings/tokens
 
 # Then restart backend — ARTH will automatically use them!
+# Verify: curl http://localhost:8000/api/omniroute/status | jq .reachable
+# Docs: docs/OMNIROUTE_INTEGRATION.md  +  https://github.com/diegosouzapw/OmniRoute
 ```
 
 ---
@@ -218,12 +229,22 @@ cp .env.example .env
 
 | Provider | Model | Speed | Best For |
 |----------|-------|-------|----------|
-| **Groq** | Llama 3.1 70B | ⚡⚡⚡ | Fast analysis (recommended) |
+| **OmniRoute** | `auto` (356 providers) | ⚡⚡⚡ | **Recommended — ONE key, auto-fallback across 150+ free tiers (~1.47B tokens/mo). 19 strategies: auto · auto/fast · auto/cheap · auto/smart. Reference: [OmniRoute](https://github.com/diegosouzapw/OmniRoute)** |
+| **Groq** | Llama 3.1 70B | ⚡⚡⚡ | Fast analysis (direct fallback) |
 | **Cohere** | Command R | ⚡⚡ | Detailed reasoning |
 | **HuggingFace** | Mistral 7B | ⚡⚡ | Vision models |
 | **Ollama** | Llama 3.1 | ⚡ | Offline, unlimited |
 
-All providers are optional — the system falls back to rule-based if none are configured.
+All providers are optional — the system falls back to rule-based if none are configured.  
+`AI_PRIORITY=omniroute,groq,cohere,huggingface,ollama` controls fallback order (change in `.env`).
+
+### OmniRoute Quick Check
+```bash
+curl http://localhost:8000/api/omniroute/status | jq .reachable
+curl http://localhost:8000/api/omniroute/models | jq '.data[].id' | head
+```
+
+See `docs/OMNIROUTE_INTEGRATION.md` for full setup (npm / Docker / source).
 
 ---
 
@@ -243,18 +264,23 @@ All providers are optional — the system falls back to rule-based if none are c
 ```
 ai-trader/
 ├── backend/
-│   ├── main.py                     # FastAPI entry (37 routes)
-│   ├── config.py                   # Settings from .env
+│   ├── main.py                     # FastAPI entry (41 routes — +4 OmniRoute)
+│   ├── config.py                   # Settings from .env (incl. OMNIROUTE_*)
 │   ├── ai_agent/                   # ARTH AI Agent
 │   │   ├── arth.py                 # Main agent orchestrator
 │   │   ├── brain.py                # SQLite knowledge base
-│   │   ├── router.py               # Multi-AI provider router
+│   │   ├── router.py               # Multi-AI provider router (omniroute first)
 │   │   ├── analyzer.py             # Analysis + pattern detection
 │   │   ├── backtest.py             # Backtesting engine (4 strategies)
 │   │   ├── scheduler.py            # Self-learning scheduler
 │   │   ├── sentiment.py            # Market sentiment analyzer
 │   │   ├── prompts.py              # AI prompts for trading
 │   │   └── providers/              # AI provider implementations
+│   │       ├── omniroute_provider.py  # 🌐 OmniRoute gateway (356 providers via OpenAI-compatible)
+│   │       ├── groq_provider.py
+│   │       ├── cohere_provider.py
+│   │       ├── huggingface_provider.py
+│   │       └── ollama_provider.py
 │   ├── services/
 │   │   ├── price_fetcher.py        # Yahoo Finance (FREE)
 │   │   ├── signal_generator.py     # Rule-based signals
@@ -298,9 +324,12 @@ pytest tests/ -v
 
 | File | Description |
 |------|-------------|
+| [docs/OMNIROUTE_INTEGRATION.md](docs/OMNIROUTE_INTEGRATION.md) | **OmniRoute gateway — one key for 356 providers, setup & troubleshooting** |
 | [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) | Setup instructions, API reference, troubleshooting |
 | [FUTURE_IMPROVEMENTS.md](FUTURE_IMPROVEMENTS.md) | Roadmap using only free AI services |
 | [REQUIREMENTS.md](REQUIREMENTS.md) | Detailed requirements for API keys |
+| [docker-compose.omniroute.yml](docker-compose.omniroute.yml) | Docker Compose with OmniRoute service wired to backend |
+| [scripts/setup-omniroute.sh](scripts/setup-omniroute.sh) | One-command installer (npm / Docker / source) for OmniRoute |
 | [API Docs](http://localhost:8000/docs) | Interactive Swagger docs (when running) |
 
 ---
@@ -322,4 +351,4 @@ MIT License
 ---
 
 **Built with ❤️ | AI Trader v2.0 — ARTH Self-Learning AI Agent**
-**37 API Endpoints • 10 Tests • 5 Frontend Pages • 30+ Indicators • 100% FREE**
+**41 API Endpoints (incl. OmniRoute) • 14 Tests • 5 Frontend Pages • 30+ Indicators • 100% FREE**

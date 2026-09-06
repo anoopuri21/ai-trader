@@ -64,4 +64,14 @@ export const api = {
     performance: () => fetchApi<any>('/api/backtest/performance'),
     accuracy: (days?: number) => fetchApi<any>(`/api/backtest/accuracy?days=${days || 30}`),
   },
+
+  omniroute: {
+    config: () => fetchApi<any>('/api/omniroute/config'),
+    status: () => fetchApi<any>('/api/omniroute/status'),
+    models: () => fetchApi<any>('/api/omniroute/models'),
+    test: (prompt?: string, model?: string) => fetchApi<any>('/api/omniroute/test', {
+      method: 'POST',
+      body: JSON.stringify({ prompt, model }),
+    }),
+  },
 };

@@ -1,0 +1,94 @@
+# docker-compose.omniroute.yml — AI Trader + OmniRoute gateway
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.omniroute.yml up -d   # production
+#   docker compose -f docker-compose.omniroute.yml up -d                         # standalone (uses defaults)
+#   ./scripts/setup-omniroute.sh --status                                        # probe gateway
+#
+# This file is MERGED with the base compose if you have one, or run standalone.
+# It wires Backend → OmniRoute via internal network, exposing OmniRoute dashboard on 20128.
+
+networks:
+  ai-trader:
+    driver: bridge
+
+services:
+  omniroute:
+    image: diegosouzapw/omniroute:latest
+    container_name: omniroute
+    ports:
+      - "${OMNIROUTE_PORT:-20128}:20128"
+    environment:
+      # Secrets — set via .env or leave defaults for dev (keyless mode)
+      - JWT_SECRET=${OMNIROUTE_JWT_SECRET:-change-me-jwt-secret-32chars-min}
+      - API_KEY_SECRET=${OMNIROUTE_API_KEY_SECRET:-change-me-api-key-secret-32chars-min}
+      - INITIAL_PASSWORD=${OMNIROUTE_INITIAL_PASSWORD:-CHANGEME}
+      - PORT=20128
+      # Data persistence
+      # - DATA_DIR=/app/data
+    volumes:
+      - omniroute_data:/root/.omniroute
+    restart: unless-stopped
+    networks:
+      - ai-trader
+    healthcheck:
+      test: ["CMD", "node", "scripts/dev/healthcheck.mjs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Example backend service — adapt to your base compose or run standalone
+  # If you already have a `backend` service in docker-compose.yml, this block
+  # MERGES and just adds the OmniRoute env override + network dependency.
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: ai-trader-backend:latest
+    container_name: ai-trader-backend
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      # Point ARTH at the gateway service name (not localhost) when in Docker
+      - OMNIROUTE_BASE_URL=http://omniroute:20128/v1
+      - OMNIROUTE_API_KEY=${OMNIROUTE_API_KEY:-}
+      - OMNIROUTE_MODEL=${OMNIROUTE_MODEL:-auto}
+      - OMNIROUTE_TIMEOUT=${OMNIROUTE_TIMEOUT:-90}
+      - AI_PRIORITY=${AI_PRIORITY:-omniroute,groq,cohere,huggingface,ollama}
+      # Forward existing AI keys (optional fallback)
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - COHERE_API_KEY=${COHERE_API_KEY:-}
+      - HUGGINGFACE_API_KEY=${HUGGINGFACE_API_KEY:-}
+      - DATABASE_URL=sqlite:///./data/ai_trader.db
+      - FRONTEND_URL=http://localhost:3000
+    volumes:
+      - ./backend:/app
+      - backend_data:/app/data
+    depends_on:
+      omniroute:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - ai-trader
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: ai-trader-frontend:latest
+    container_name: ai-trader-frontend
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - ai-trader
+
+volumes:
+  omniroute_data:
+    driver: local
+  backend_data:
+    driver: local

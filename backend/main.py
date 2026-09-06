@@ -23,6 +23,7 @@ from api.routes import (
     analysis as analysis_routes,
     paper_trading as paper_routes,
     websocket as ws_routes,
+    omniroute as omniroute_routes,
 )
 from ai_agent.arth import arth
 from ai_agent.scheduler import scheduler
@@ -98,6 +99,7 @@ app.include_router(backtest_routes.router)
 app.include_router(analysis_routes.router)
 app.include_router(paper_routes.router)
 app.include_router(ws_routes.router)
+app.include_router(omniroute_routes.router)
 
 
 # ─── Root & Health ──────────────────────────────────────────────
