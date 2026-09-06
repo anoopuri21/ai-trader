@@ -64,6 +64,36 @@ class OmniRouteProvider:
                 raw_url = raw_url[: -len("/chat/completions")]
             elif "/v1" not in raw_url:
                 raw_url = raw_url + "/v1"
+        # V-08 FIX: SSRF guard — block private/metadata IPs unless explicitly allowed
+        from urllib.parse import urlparse
+
+        try:
+            from config import settings as _s
+
+            allow_private = getattr(_s, "allow_private_omniroute", False)
+        except Exception:
+            allow_private = False
+        if not allow_private:
+            try:
+                parsed = urlparse(raw_url)
+                host = parsed.hostname or ""
+                # Block cloud metadata + private ranges
+                blocked_hosts = {"169.254.169.254", "metadata.google.internal"}
+                blocked_prefixes = ("10.", "192.168.", "172.16.", "172.17.", "172.18.", "172.19.", "172.20.", "172.21.", "172.22.", "172.23.", "172.24.", "172.25.", "172.26.", "172.27.", "172.28.", "172.29.", "172.30.", "172.31.", "127.0.0.1", "0.0.0.0", "::1")
+                # Allow localhost / loopback explicitly
+                if host in ("127.0.0.1", "localhost", "0.0.0.0", "::1", "::ffff:127.0.0.1"):
+                    pass
+                elif host in blocked_hosts or any(host.startswith(p) for p in blocked_prefixes):
+                    if host in ("169.254.169.254", "metadata.google.internal"):
+                        logger.error(f"OmniRoute SSRF blocked: {raw_url} is a metadata IP")
+                        raise ValueError("OMNIROUTE_BASE_URL points to blocked metadata IP")
+                    else:
+                        logger.error(f"OmniRoute SSRF blocked: {raw_url} is a private IP (set ALLOW_PRIVATE_OMNIROUTE=true to allow)")
+                        raise ValueError("OMNIROUTE_BASE_URL points to private IP (blocked)")
+            except ValueError:
+                raise
+            except Exception as e:
+                logger.debug(f"SSRF check parse error: {e}")
         self.base_url: str = raw_url
         self.model: str = _model or self.DEFAULT_MODEL
         self.timeout: int = _timeout
@@ -184,8 +214,9 @@ class OmniRouteProvider:
                         else:
                             return {"result": parsed, "raw_response": content}
                     except json.JSONDecodeError:
-                        # Extract JSON block via regex — matches any JSON object across lines
-                        m = re.search(r"\{[\s\S]*\}", content)
+                        # Extract JSON block — non-greedy (V-13 fix) + max 4000 chars to avoid ReDoS
+                        snippet = content[:4000]
+                        m = re.search(r"\{[\s\S]*?\}", snippet)
                         if m:
                             try:
                                 parsed = json.loads(m.group())

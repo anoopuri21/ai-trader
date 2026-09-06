@@ -16,11 +16,38 @@ from typing import Any, Dict, List
 import httpx
 from fastapi import APIRouter, HTTPException
 
+from fastapi import Request, Depends
+
 from config import settings
+from api.deps import verify_api_key_optional
+from middleware.rate_limit import check_rate_limit
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/omniroute", tags=["OmniRoute Gateway"])
+
+
+def _is_private_url(url: str) -> bool:
+    from urllib.parse import urlparse
+
+    try:
+        h = (urlparse(url).hostname or "").lower()
+        if h in ("169.254.169.254", "metadata.google.internal"):
+            return True
+        if h.startswith("10.") or h.startswith("192.168.") or h.startswith("172."):
+            # Check 172.16-31
+            if h.startswith("172."):
+                try:
+                    second = int(h.split(".")[1])
+                    if 16 <= second <= 31:
+                        return True
+                except Exception:
+                    pass
+            else:
+                return True
+        return False
+    except Exception:
+        return False
 
 
 def _masked_key(key: str | None) -> str | None:
@@ -46,9 +73,13 @@ async def omniroute_config() -> Dict[str, Any]:
 
 
 @router.get("/status")
-async def omniroute_status() -> Dict[str, Any]:
+async def omniroute_status(request: Request) -> Dict[str, Any]:
     """Probe OmniRoute gateway liveness (GET {base_url}/models)."""
+    await check_rate_limit(request, "global")
     base_url = getattr(settings, "omniroute_base_url", "http://localhost:20128/v1").rstrip("/")
+    # V-08 SSRF guard
+    if _is_private_url(base_url) and not getattr(settings, "allow_private_omniroute", False):
+        raise HTTPException(status_code=400, detail="OMNIROUTE_BASE_URL points to private/metadata IP (blocked). Set ALLOW_PRIVATE_OMNIROUTE=true to allow.")
     api_key = getattr(settings, "omniroute_api_key", None)
     headers: Dict[str, str] = {}
     if api_key:
@@ -94,9 +125,12 @@ async def omniroute_status() -> Dict[str, Any]:
 
 
 @router.get("/models")
-async def omniroute_models() -> Dict[str, Any]:
+async def omniroute_models(request: Request) -> Dict[str, Any]:
     """List models via OmniRoute gateway (passthrough)."""
+    await check_rate_limit(request, "global")
     base_url = getattr(settings, "omniroute_base_url", "http://localhost:20128/v1").rstrip("/")
+    if _is_private_url(base_url) and not getattr(settings, "allow_private_omniroute", False):
+        raise HTTPException(status_code=400, detail="Private OMNIROUTE_BASE_URL blocked")
     api_key = getattr(settings, "omniroute_api_key", None)
     headers: Dict[str, str] = {}
     if api_key:
@@ -118,11 +152,12 @@ async def omniroute_models() -> Dict[str, Any]:
 
 
 @router.post("/test")
-async def omniroute_test(payload: Dict[str, Any] | None = None) -> Dict[str, Any]:
+async def omniroute_test(request: Request, payload: Dict[str, Any] | None = None, _auth=Depends(verify_api_key_optional)) -> Dict[str, Any]:
     """
     Quick smoke test: send a tiny chat completion via OmniRoute.
-    Body optional: {"prompt": "Say PONG", "model": "auto"}
+    Body optional: {"prompt": "Say PONG", "model": "auto"} — rate limited + auth optional
     """
+    await check_rate_limit(request, "auth")
     base_url = getattr(settings, "omniroute_base_url", "http://localhost:20128/v1").rstrip("/")
     api_key = getattr(settings, "omniroute_api_key", None)
     model = (payload or {}).get("model") or getattr(settings, "omniroute_model", "auto")
