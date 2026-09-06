@@ -357,9 +357,17 @@ class ArthAgent:
         return None
     
     def _format_performance(self, acc, stats) -> str:
+        total = acc.get("total_predictions", 0)
+        correct = acc.get("correct_predictions", 0)
+        acc_pct = acc.get("accuracy", 0)
+        period = acc.get("period_days", 30)
+        if total == 0:
+            return (f"Performance: {stats['total_predictions']} predictions, "
+                    f"{stats['overall_accuracy']}% overall accuracy. "
+                    f"Last {period}d: no resolved predictions yet — backtest and paper trading will populate history.")
         return (f"Performance: {stats['total_predictions']} predictions, "
                 f"{stats['overall_accuracy']}% accuracy. "
-                f"Last {acc['period_days']}d: {acc['accuracy']}% ({acc['correct_predictions']}/{acc['total_predictions']}).")
+                f"Last {period}d: {acc_pct}% ({correct}/{total}).")
     
     def _format_brain(self, stats) -> str:
         return (f"Brain: {stats['total_predictions']} predictions, "
