@@ -46,11 +46,16 @@ class LearningScheduler:
         logger.info("Learning Scheduler stopped")
     
     async def _run_loop(self):
+        # Run auto-strategy once after initial warmup, then every 6h
+        _auto_counter = 0
         while self._running:
             try:
                 await self._resolve_predictions()
                 await self._self_reflect()
                 await self._run_quick_backtests()
+                _auto_counter += 1
+                if _auto_counter % 12 == 0:  # 12 * 30min = 6h
+                    await self._auto_strategy_generate()
                 await asyncio.sleep(1800)  # 30 minutes
             except asyncio.CancelledError:
                 break
@@ -116,6 +121,20 @@ class LearningScheduler:
                     pass
         except Exception as e:
             logger.error(f"Quick backtest error: {e}")
+
+    async def _auto_strategy_generate(self):
+        """Auto-generate from Engine #4 if enabled."""
+        try:
+            from config import settings as _cfg
+            if not getattr(_cfg, "enable_auto_strategy", False):
+                return
+            from ai_agent.strategy_generator import strategy_generator
+
+            result = await strategy_generator.generate_rules(lookback_days=14, dry_run=False)
+            if result.get("proposals"):
+                logger.info(f"Scheduler: Auto-strategy generated {len(result['proposals'])} proposals")
+        except Exception as e:
+            logger.error(f"Auto-strategy error: {e}")
 
 
 scheduler = LearningScheduler()

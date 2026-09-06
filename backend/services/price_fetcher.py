@@ -7,6 +7,7 @@ stocks efficiently. Cache uses TTL to prevent Yahoo rate limiting.
 """
 
 import logging
+import re
 from datetime import datetime
 from typing import Dict, List, Optional
 import asyncio
@@ -17,6 +18,19 @@ from cachetools import TTLCache
 
 from config import settings
 from models.stock import StockInfo, NIFTY_50_SYMBOLS, NIFTY_BANK_SYMBOLS
+
+# V-04 FIX: strict symbol validation (allow only NSE tickers + ^NSEI/^NSEBANK)
+_SYMBOL_RE = re.compile(r"^[A-Z0-9]{1,12}$|^\^[A-Z]{3,10}$")
+_ALLOWED_PERIODS = {"1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "max"}
+_ALLOWED_INTERVALS = {"1m", "2m", "5m", "15m", "30m", "60m", "90m", "1h", "1d", "5d", "1wk", "1mo"}
+
+def _validate_symbol(symbol: str) -> str:
+    s = symbol.strip().upper().replace(".NS", "").replace(".BO", "")
+    if not _SYMBOL_RE.match(s):
+        raise ValueError(f"Invalid symbol: {symbol}")
+    if len(s) > 12:
+        raise ValueError(f"Symbol too long: {symbol}")
+    return s
 
 logger = logging.getLogger(__name__)
 
@@ -61,13 +75,19 @@ class PriceFetcher:
     
     async def get_price(self, symbol: str) -> Optional[StockInfo]:
         """Get current price for a single stock."""
+        try:
+            symbol = _validate_symbol(symbol)
+        except ValueError as e:
+            logger.warning(f"Blocked invalid symbol {symbol}: {e}")
+            return None
         cache_key = f"price_{symbol}"
         if cache_key in self._price_cache:
             return self._price_cache[cache_key]
         
         try:
             loop = asyncio.get_event_loop()
-            info = await loop.run_in_executor(None, lambda: yf.Ticker(self._to_yahoo(symbol)).fast_info)
+            # Timeout guard: yfinance has no timeout, wrap with wait_for
+            info = await asyncio.wait_for(loop.run_in_executor(None, lambda: yf.Ticker(self._to_yahoo(symbol)).fast_info), timeout=10)
             
             if not info.last_price or info.last_price == 0:
                 return None
@@ -95,22 +115,38 @@ class PriceFetcher:
             return None
     
     async def get_prices(self, symbols: List[str]) -> List[StockInfo]:
-        """Get prices for multiple stocks."""
-        tasks = [self.get_price(s) for s in symbols]
+        """Get prices for multiple stocks. Clamped to 20 symbols max."""
+        # V-04: clamp + validate list size
+        symbols = symbols[:20]
+        valid = []
+        for s in symbols:
+            try:
+                valid.append(_validate_symbol(s))
+            except ValueError:
+                logger.debug(f"Skipping invalid symbol {s}")
+        tasks = [self.get_price(s) for s in valid]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         return [r for r in results if isinstance(r, StockInfo)]
     
     async def get_historical_data(self, symbol: str, period: str = "3mo", interval: str = "1d") -> Optional[pd.DataFrame]:
         """Get historical data for technical analysis."""
+        try:
+            symbol = _validate_symbol(symbol)
+        except ValueError:
+            return None
+        if period not in _ALLOWED_PERIODS:
+            period = "3mo"
+        if interval not in _ALLOWED_INTERVALS:
+            interval = "1d"
         cache_key = f"hist_{symbol}_{period}_{interval}"
         if cache_key in self._data_cache:
             return self._data_cache[cache_key]
         
         try:
             loop = asyncio.get_event_loop()
-            df = await loop.run_in_executor(
+            df = await asyncio.wait_for(loop.run_in_executor(
                 None, lambda: yf.Ticker(self._to_yahoo(symbol)).history(period=period, interval=interval)
-            )
+            ), timeout=12)
             if df is not None and not df.empty:
                 self._data_cache[cache_key] = df
                 return df

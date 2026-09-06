@@ -158,17 +158,70 @@ def test_paper_trader():
         close_result = trader.close_position(positions[0]['id'], 105.0)
         assert close_result['status'] == 'closed'
 
+def _collect_paths(app) -> list:
+    """Collect all route paths via openapi (works across FastAPI versions) + fallback."""
+    try:
+        return list(app.openapi().get("paths", {}).keys())
+    except Exception:
+        paths = []
+        for r in app.routes:
+            if hasattr(r, 'path') and getattr(r, 'path', None):
+                paths.append(r.path)
+        try:
+            for r in app.router.routes:
+                if hasattr(r, 'path') and r.path not in paths and getattr(r, 'path', None):
+                    paths.append(r.path)
+        except Exception:
+            pass
+        return paths
+
 def test_app_routes():
     from main import app
-    routes = [r.path for r in app.routes if hasattr(r, 'path')]
+    routes = _collect_paths(app)
     
-    assert '/api/health' in routes
+    assert '/api/health' in routes, f"Missing /api/health in {routes}"
     
     arth_routes = [r for r in routes if '/arth/' in r]
-    assert len(arth_routes) >= 5
+    assert len(arth_routes) >= 5, f"Expected >=5 arth routes, got {arth_routes} from {routes}"
     
     paper_routes = [r for r in routes if '/paper/' in r]
-    assert len(paper_routes) >= 3
+    assert len(paper_routes) >= 3, f"Expected >=3 paper routes, got {paper_routes}"
+
+def test_omniroute_provider_import():
+    from ai_agent.providers.omniroute_provider import OmniRouteProvider
+    p = OmniRouteProvider(api_key="test-key", base_url="http://localhost:20128/v1", model="auto")
+    assert p.PROVIDER_NAME == "omniroute"
+    assert p.base_url == "http://localhost:20128/v1"
+    assert p.model == "auto"
+    status = p.get_status()
+    assert status["provider"] == "omniroute"
+    assert status["available"] is True
+
+def test_omniroute_in_router():
+    from ai_agent.router import AIRouter
+    r = AIRouter()
+    assert "omniroute" in r.providers
+    assert "omniroute" in r.priority_order
+    status_list = r.get_status()
+    providers = [s["provider"] for s in status_list]
+    assert "omniroute" in providers
+
+def test_omniroute_routes():
+    from main import app
+    routes = _collect_paths(app)
+    omni = [r for r in routes if '/omniroute' in r]
+    assert len(omni) >= 3, f"Expected omniroute routes, got {routes}"
+    assert '/api/omniroute/status' in routes, f"missing status in {routes}"
+    assert '/api/omniroute/models' in routes, f"missing models in {routes}"
+    assert '/api/omniroute/config' in routes, f"missing config in {routes}"
+
+def test_config_omniroute_settings():
+    from config import settings
+    assert hasattr(settings, "omniroute_api_key")
+    assert hasattr(settings, "omniroute_base_url")
+    assert hasattr(settings, "omniroute_model")
+    assert settings.omniroute_base_url.startswith("http")
+    assert "omniroute" in settings.ai_priority
 
 def test_market_hours():
     """Test market hours calculation."""

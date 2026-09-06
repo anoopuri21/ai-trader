@@ -23,6 +23,7 @@ from api.routes import (
     analysis as analysis_routes,
     paper_trading as paper_routes,
     websocket as ws_routes,
+    omniroute as omniroute_routes,
 )
 from ai_agent.arth import arth
 from ai_agent.scheduler import scheduler
@@ -67,27 +68,39 @@ async def lifespan(app: FastAPI):
 
 # ─── App ────────────────────────────────────────────────────────
 
+_is_prod = getattr(settings, "env", "development") == "production"
+
 app = FastAPI(
     title=settings.app_name,
-    description="Self-learning AI trading signals for Indian markets (NSE)",
-    version="2.0.0",
+    description="Self-learning AI trading signals for Indian markets (NSE) — OmniRoute gateway + 4 self-learning engines",
+    version="2.1.0",
     lifespan=lifespan,
+    docs_url=None if _is_prod else "/docs",
+    redoc_url=None if _is_prod else "/redoc",
+    openapi_url="/openapi.json" if not _is_prod else None,
 )
 
-# CORS — Architecture Fix: Use specific origins, not wildcard with credentials
-allowed_origins = [
-    settings.frontend_url,
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-]
+# CORS — strict, validates frontend_url != "*"
+if settings.frontend_url.strip() == "*":
+    raise ValueError("FRONTEND_URL cannot be '*'. Set a specific origin when allow_credentials=True")
+
+_allowed = [settings.frontend_url, "http://localhost:3000", "http://127.0.0.1:3000"]
+_allowed = [o.strip().rstrip("/") for o in _allowed if o.strip()]
+allowed_origins = list(dict.fromkeys(_allowed))
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["Content-Type", "Authorization", "X-API-Key", "X-Request-Id"],
+    max_age=600,
 )
+
+# Rate limit middleware (global 60/min)
+from middleware.rate_limit import RateLimitMiddleware
+
+app.add_middleware(RateLimitMiddleware, exclude_paths=["/docs", "/openapi.json", "/redoc", "/api/health"])
 
 # ─── Routers ────────────────────────────────────────────────────
 
@@ -98,6 +111,7 @@ app.include_router(backtest_routes.router)
 app.include_router(analysis_routes.router)
 app.include_router(paper_routes.router)
 app.include_router(ws_routes.router)
+app.include_router(omniroute_routes.router)
 
 
 # ─── Root & Health ──────────────────────────────────────────────
@@ -127,19 +141,23 @@ async def root():
 async def health():
     """
     Health check with market status and brain stats.
-    
-    Architecture Fix: Uses timezone-aware IST check instead of
-    broken UTC float-to-int comparison.
+    In production (debug=False) hides database path and detailed brain.
     """
-    return {
+    is_debug = getattr(settings, "debug", False)
+    base = {
         "status": "healthy",
         "service": settings.app_name,
-        "version": "2.0.0",
+        "version": "2.1.0",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "market_status": "open" if is_market_open() else "closed",
         "arth_status": arth.status,
         "ai_enabled": arth.status == "ready",
-        "ai_providers": arth.get_provider_status() if arth.status == "ready" else [],
-        "brain_stats": arth.brain.get_stats() if arth.brain else {},
-        "database": str(get_db_path()),
     }
+    if is_debug:
+        base["ai_providers"] = arth.get_provider_status() if arth.status == "ready" else []
+        base["brain_stats"] = arth.brain.get_stats() if arth.brain else {}
+        base["database"] = str(get_db_path())
+    else:
+        base["ai_providers"] = [{"provider": p["provider"], "available": p["available"]} for p in (arth.get_provider_status() if arth.status == "ready" else [])]
+        base["brain_stats"] = {"total_predictions": (arth.brain.get_stats().get("total_predictions", 0) if arth.brain else 0)}
+    return base

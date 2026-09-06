@@ -3,12 +3,16 @@ AI Trader - Prices API Routes
 Phase 1: Price data endpoints
 """
 
+import re
 from typing import Optional
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request, HTTPException
 from datetime import datetime
 
 from models.stock import StockInfo
 from services.price_fetcher import price_fetcher, NIFTY_50_SYMBOLS, NIFTY_BANK_SYMBOLS
+from middleware.rate_limit import check_rate_limit
+
+_SYMBOL_RE = re.compile(r"^[A-Z0-9]{1,12}$")
 
 router = APIRouter(prefix="/api/prices", tags=["Prices"])
 
@@ -38,11 +42,15 @@ async def get_all_prices(
 
 
 @router.get("/{symbol}")
-async def get_price(symbol: str):
+async def get_price(symbol: str, request: Request):
     """
     Get current price for a specific stock.
     """
-    symbol = symbol.upper()
+    await check_rate_limit(request, "global")
+    sym = symbol.strip().upper().replace(".NS","")
+    if not _SYMBOL_RE.match(sym):
+        raise HTTPException(status_code=422, detail="Invalid symbol")
+    symbol = sym
     price = await price_fetcher.get_price(symbol)
     
     if not price:
@@ -54,12 +62,23 @@ async def get_price(symbol: str):
 
 @router.get("/batch/list")
 async def get_prices_list(
-    symbols: str = Query(..., description="Comma-separated symbols")
+    symbols: str = Query(..., description="Comma-separated symbols (max 20)"),
+    request: Request = None,
 ):
     """
     Get prices for multiple specific symbols.
     """
-    symbol_list = [s.strip().upper() for s in symbols.split(",")]
+    if request:
+        await check_rate_limit(request, "global")
+    # Clamp + validate
+    raw = symbols.split(",")[:20]
+    symbol_list = []
+    for s in raw:
+        sym = s.strip().upper().replace(".NS","")
+        if _SYMBOL_RE.match(sym):
+            symbol_list.append(sym)
+    if not symbol_list:
+        raise HTTPException(status_code=422, detail="No valid symbols")
     prices = await price_fetcher.get_prices(symbol_list)
     
     return {

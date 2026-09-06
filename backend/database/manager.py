@@ -53,8 +53,14 @@ class DatabaseManager:
         self._write_lock = threading.Lock()
         self._db_path = Path(db_path) if db_path else DB_PATH
         
-        # Ensure directory exists
+        # Ensure directory exists with secure perms
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            import os
+
+            os.chmod(self._db_path.parent, 0o700)
+        except Exception:
+            pass
         
         # Create connection with proper settings
         self._conn = sqlite3.connect(
@@ -254,6 +260,14 @@ class DatabaseManager:
                 """)
             
             self._conn.commit()
+            # Secure DB file perms 600 (V-14)
+            try:
+                import os
+
+                if self._db_path.exists():
+                    os.chmod(self._db_path, 0o600)
+            except Exception:
+                pass
         
         logger.info("All database tables initialized")
     

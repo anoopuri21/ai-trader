@@ -30,8 +30,17 @@ class Settings(BaseSettings):
     # ─── Application ───
     app_name: str = "AI Trader"
     debug: bool = True
+    env: str = "development"  # development | production
     port: int = 8000
     frontend_url: str = "http://localhost:3000"
+    # Optional API key to protect write endpoints (paper trading, chat, omniroute test)
+    # Leave empty for open dev mode; set in production
+    arth_api_key: Optional[str] = None
+    api_key: Optional[str] = None  # alias
+    
+    # ─── Security ───
+    allow_private_omniroute: bool = False  # allow 10./192.168./169.254 for OmniRoute (SSRF guard)
+    max_ws_connections: int = 100
     
     # ─── Database ───
     # Note: The actual DB path is managed by database/manager.py.
@@ -75,9 +84,22 @@ class Settings(BaseSettings):
     mistral_api_key: Optional[str] = None
     openai_api_key: Optional[str] = None
     anthropic_api_key: Optional[str] = None
+    # OmniRoute — unified gateway to 356 providers (OpenAI-compatible)
+    # Reference: https://github.com/diegosouzapw/OmniRoute
+    omniroute_api_key: Optional[str] = None
+    omniroute_base_url: str = "http://localhost:20128/v1"
+    omniroute_model: str = "auto"
+    omniroute_timeout: int = 90
+
+    # ─── News / Fundamentals (optional) ───
+    newsapi_key: Optional[str] = None
+    enable_news: bool = False
+    enable_fundamentals: bool = True
+    enable_math_engine: bool = True
+    enable_auto_strategy: bool = False
     
     # ─── AI Settings ───
-    ai_priority: str = "groq,cohere,huggingface,ollama"
+    ai_priority: str = "omniroute,groq,cohere,huggingface,ollama"
     enable_fallback_signals: bool = True
     
     # ─── Learning & Backtesting ───
